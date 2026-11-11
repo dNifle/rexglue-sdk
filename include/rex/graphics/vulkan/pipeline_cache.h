@@ -440,6 +440,25 @@ class VulkanPipelineCache {
   uint32_t shader_storage_index_ = 0;
   bool shader_storage_file_flush_needed_ = false;
 
+  // Driver-level VkPipelineCache: saves the driver recompiling the same
+  // shader permutations for every pipeline state (a large first-encounter
+  // cost on Mesa/RADV) and persists to <shaders>/<title_id>.vkpc so later
+  // runs start warm. Created empty in Initialize(); the file contents are
+  // merged once InitializeShaderStorage knows the cache root. The cache is
+  // saved periodically (the app hard-exits without subsystem teardown, so
+  // shutdown-time saving cannot be relied on), and all uses take the lock -
+  // VkPipelineCache requires external synchronization and the creation
+  // threads run concurrently.
+  VkPipelineCache vk_pipeline_cache_ = VK_NULL_HANDLE;
+  std::filesystem::path vk_pipeline_cache_path_;
+  std::mutex vk_pipeline_cache_lock_;
+  std::atomic<bool> vk_pipeline_cache_dirty_{false};
+  uint64_t vk_pipeline_cache_last_save_ms_ = 0;
+  void LoadVkPipelineCache();
+  // Returns true when the cache data was actually written (false when skipped
+  // or the write failed), so the periodic save can keep retrying.
+  bool SaveVkPipelineCache();
+
   // Pipeline storage output stream, for preload in the next emulator runs.
   FILE* pipeline_storage_file_ = nullptr;
   bool pipeline_storage_file_flush_needed_ = false;
