@@ -4,9 +4,15 @@
 #include <cmath>
 #include <cstring>
 
+#include <rex/cvar.h>
 #include <rex/graphics/registers.h>
 #include <rex/graphics/xenos.h>
 #include <rex/types.h>
+
+REXCVAR_DEFINE_BOOL(skinning_cpu, true, "GPU",
+                    "Compute Fable II's memexport skinning on the CPU so the draw does not "
+                    "wait for the GPU every frame")
+    .lifecycle(rex::cvar::Lifecycle::kHotReload);
 
 namespace rex::graphics::d3d12 {
 

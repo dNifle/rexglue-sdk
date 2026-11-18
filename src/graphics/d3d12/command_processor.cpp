@@ -44,14 +44,10 @@ REXCVAR_DEFINE_BOOL(skip_depth_clear_transfers, true, "GPU/D3D12",
                     "transfer to the rectangle's height")
     .lifecycle(rex::cvar::Lifecycle::kHotReload);
 REXCVAR_DECLARE(bool, execute_unclipped_draw_vs_on_cpu);
-REXCVAR_DEFINE_BOOL(terrain_tess_cpu, true, "GPU/D3D12",
-                    "Compute Fable II's terrain tessellation factors on the CPU so the "
-                    "memexport draw does not wait for the GPU every frame")
-    .lifecycle(rex::cvar::Lifecycle::kHotReload);
-REXCVAR_DEFINE_BOOL(skinning_cpu, true, "GPU/D3D12",
-                    "Compute Fable II's memexport skinning on the CPU so the draw does not "
-                    "wait for the GPU every frame")
-    .lifecycle(rex::cvar::Lifecycle::kHotReload);
+// Defined in the shared fable2_terrain_tess.cpp / fable2_skinning.cpp (both
+// backends use the CPU shortcuts).
+REXCVAR_DECLARE(bool, terrain_tess_cpu);
+REXCVAR_DECLARE(bool, skinning_cpu);
 
 REXCVAR_DEFINE_BOOL(d3d12_readback_memexport, false, "GPU/D3D12",
                     "Read data written by memory export in shaders on the CPU")

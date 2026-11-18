@@ -5,9 +5,15 @@
 #include <cstring>
 #include <vector>
 
+#include <rex/cvar.h>
 #include <rex/graphics/registers.h>
 #include <rex/graphics/xenos.h>
 #include <rex/types.h>
+
+REXCVAR_DEFINE_BOOL(terrain_tess_cpu, true, "GPU",
+                    "Compute Fable II's terrain tessellation factors on the CPU so the "
+                    "memexport draw does not wait for the GPU every frame")
+    .lifecycle(rex::cvar::Lifecycle::kHotReload);
 
 namespace rex::graphics::d3d12 {
 
