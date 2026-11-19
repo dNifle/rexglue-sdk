@@ -50,7 +50,8 @@ REXCVAR_DEFINE_BOOL(present_render_pass_clear, true, "UI/Presenter",
                     "Clear render pass during presentation");
 
 REXCVAR_DEFINE_BOOL(vulkan_allow_present_mode_immediate, true, "UI/Vulkan",
-                    "Allow immediate present mode (no vsync)");
+                    "Allow immediate present mode (no vsync; tearing). Never "
+                    "used while vsync is on");
 
 REXCVAR_DEFINE_BOOL(vulkan_allow_present_mode_mailbox, true, "UI/Vulkan",
                     "Allow mailbox present mode (triple buffering)");
@@ -1379,9 +1380,11 @@ VkSwapchainKHR VulkanPresenter::PaintContext::CreateSwapchainForVulkanSurface(
   // As presentation is usually controlled by the GPU command processor, it's
   // better to use modes that allow as quick acquisition as possible to avoid
   // interfering with GPU command processing, and also to allow tearing so
-  // variable refresh rate may be used where it's available.
+  // variable refresh rate may be used where it's available - but vsync=true
+  // is a promise of no tearing, so tearing modes are only considered then.
   // Note: If the priorities here are changes, update the cvar descriptions.
-  if (REXCVAR_GET(vulkan_allow_present_mode_immediate) &&
+  const bool vsync_enabled = rex::cvar::Query<bool>("vsync");
+  if (!vsync_enabled && REXCVAR_GET(vulkan_allow_present_mode_immediate) &&
       std::find(present_modes.cbegin(), present_modes.cend(), VK_PRESENT_MODE_IMMEDIATE_KHR) !=
           present_modes.cend()) {
     // Allowing tearing to reduce latency, and possibly variable refresh rate
@@ -1393,7 +1396,7 @@ VkSwapchainKHR VulkanPresenter::PaintContext::CreateSwapchainForVulkanSurface(
                  present_modes.cend()) {
     // Allowing dropping frames to reduce latency, but no tearing.
     swapchain_create_info.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-  } else if (REXCVAR_GET(vulkan_allow_present_mode_fifo_relaxed) &&
+  } else if (!vsync_enabled && REXCVAR_GET(vulkan_allow_present_mode_fifo_relaxed) &&
              std::find(present_modes.cbegin(), present_modes.cend(),
                        VK_PRESENT_MODE_FIFO_RELAXED_KHR) != present_modes.cend()) {
     // Limiting the frame rate, but lets too long frames cause tearing not to
