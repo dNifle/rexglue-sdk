@@ -200,8 +200,14 @@ class VulkanPipelineCache {
     // Filled only for the attachments present in the render pass object.
     PipelineRenderTarget render_targets[xenos::kMaxColorRenderTargets];
 
+    // Polygon offset (PA_SU_POLY_OFFSET) as host depth bias, matching the
+    // D3D12 backend. Needed so geometry the game offsets above surfaces
+    // (e.g. the quest trail over terrain) does not z-fight them.
+    int32_t depth_bias;
+    float depth_bias_slope_scaled;
+
     // Including all the padding, for a stable hash.
-    static constexpr uint32_t kVersion = 0x20260228;
+    static constexpr uint32_t kVersion = 0x20261119;
     PipelineDescription() {
       Reset();
     }

@@ -1612,6 +1612,20 @@ bool VulkanPipelineCache::GetCurrentStateDescription(
   // Tessellated draws are patch-domain polygonal primitives regardless of guest
   // register ambiguity in non-explicit major mode configurations.
   bool primitive_polygonal = tessellated ? true : draw_util::IsPrimitivePolygonal(regs);
+
+  // Polygon offset as host depth bias (same mapping as the D3D12 backend):
+  // without it, geometry the game offsets above surfaces (the quest trail)
+  // z-fights the terrain and flickers or vanishes at grazing angles.
+  if (render_target_cache_.GetPath() != RenderTargetCache::Path::kPixelShaderInterlock) {
+    float polygon_offset, polygon_offset_scale;
+    draw_util::GetPreferredFacePolygonOffset(regs, primitive_polygonal, polygon_offset_scale,
+                                             polygon_offset);
+    description_out.depth_bias = draw_util::GetD3D10IntegerPolygonOffset(
+        regs.Get<reg::RB_DEPTH_INFO>().depth_format, polygon_offset);
+    description_out.depth_bias_slope_scaled =
+        polygon_offset_scale * xenos::kPolygonOffsetScaleSubpixelUnit;
+  }
+
   bool rasterization_enabled = draw_util::IsRasterizationPotentiallyDone(regs, primitive_polygonal);
   if (!rasterization_enabled) {
     // Keep parity with D3D12 by fully disabling rasterization for draws where
@@ -3374,6 +3388,13 @@ bool VulkanPipelineCache::EnsurePipelineCreated(const PipelineCreationArguments&
   rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
   rasterization_state.rasterizerDiscardEnable = description.rasterizer_discard ? VK_TRUE : VK_FALSE;
   rasterization_state.depthClampEnable = description.depth_clamp_enable ? VK_TRUE : VK_FALSE;
+  // Polygon offset (depth bias): units match the D3D12 DepthBias mapping for
+  // floating-point depth (minimum resolvable difference).
+  rasterization_state.depthBiasEnable =
+      (description.depth_bias != 0 || description.depth_bias_slope_scaled != 0.0f) ? VK_TRUE
+                                                                                   : VK_FALSE;
+  rasterization_state.depthBiasConstantFactor = float(description.depth_bias);
+  rasterization_state.depthBiasSlopeFactor = description.depth_bias_slope_scaled;
   switch (description.polygon_mode) {
     case PipelinePolygonMode::kFill:
       rasterization_state.polygonMode = VK_POLYGON_MODE_FILL;
