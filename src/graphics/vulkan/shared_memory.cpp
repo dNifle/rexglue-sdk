@@ -424,7 +424,17 @@ void VulkanSharedMemory::GetUsageMasks(Usage usage, VkPipelineStageFlags& stage_
   switch (usage) {
     case Usage::kComputeWrite:
       stage_mask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-      access_mask = VK_ACCESS_SHADER_READ_BIT;
+      // The resolve copy compute shader WRITES the shared memory buffer (the
+      // EDRAM resolve destination). VK_ACCESS_SHADER_WRITE_BIT must be part of
+      // the access mask of every barrier leaving this usage, or the resolve's
+      // writes are never made available and a later reader (the texture
+      // cache's load compute shader) may legally see stale/zero data - which
+      // is exactly what makes GPU-resolved textures (the hero/dog realtime
+      // morph outputs) come out black. D3D12 orders this with a resource
+      // state transition out of UNORDERED_ACCESS, which always commits the
+      // UAV writes. Shader reads are also listed because consecutive uses of
+      // the same usage commit each other's pending written ranges (WAW).
+      access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
       return;
     case Usage::kTransferDestination:
       stage_mask = VK_PIPELINE_STAGE_TRANSFER_BIT;
